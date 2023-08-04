@@ -23,7 +23,7 @@ impl ShellProcess {
 			.stdin(Stdio::piped());
 
 		let mut process = ssh_command.spawn()?;
-		let mut ssh_stdin = process
+		let mut bash_stdin = process
 			.stdin
 			.take()
 			.ok_or(io::Error::new(io::ErrorKind::Other, "Failed to open stdin"))?;
@@ -33,14 +33,17 @@ impl ShellProcess {
 
 		let stdin_thread: JoinHandle<()> = std::thread::spawn(move || {
 			while let Ok(v) = rx.recv() {
-				if let result @ Err(_) = ssh_stdin.write_all(v.as_bytes()) {
+				if let result @ Err(_) = bash_stdin.write_all(v.as_bytes()) {
 					tx2.send(result).unwrap();
+                    continue;
 				}
-				if let result @ Err(_) = ssh_stdin.write_all(b"\n") {
+				if let result @ Err(_) = bash_stdin.write_all(b"\n") {
 					tx2.send(result).unwrap();
+                    continue;
 				}
-				if let result @ Err(_) = ssh_stdin.flush() {
+				if let result @ Err(_) = bash_stdin.flush() {
 					tx2.send(result).unwrap();
+                    continue;
 				}
 				tx2.send(Ok(())).unwrap();
 			}
